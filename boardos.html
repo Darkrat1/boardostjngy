@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoardOS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #eceae4;
+  --surface: #ffffff;
+  --surface2: #f5f3ef;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.05);
+  --text: #1c1b19;
+  --text2: #6b6760;
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+  --red: #dc2626;
+  --green: #16a34a;
+  --yellow: #ca8a04;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-xl: 0 24px 64px rgba(0,0,0,0.18), 0 8px 20px rgba(0,0,0,0.08);
+  --r: 16px;
+  --r-sm: 10px;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══════════════════════════════════════
+   DESKTOP
+══════════════════════════════════════ */
+#desktop {
+  position: fixed;
+  inset: 0;
+  bottom: 72px;
+  overflow: hidden;
+}
+
+/* dot grid */
+#desktop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.13) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════
+   HOME SCREEN
+══════════════════════════════════════ */
+#home {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  z-index: 1;
+  transition: opacity 0.25s, transform 0.25s;
+}
+#home.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
+
+.home-time {
+  text-align: center;
+}
+.home-clock {
+  font-size: 80px;
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  font-family: 'DM Mono', monospace;
+}
+.home-date {
+  font-size: 15px;
+  color: var(--text2);
+  margin-top: 8px;
+  font-weight: 400;
+}
+
+.app-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 680px;
+}
+
+.app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 14px 12px 10px;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  transition: background 0.15s, transform 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.app-icon:hover { background: rgba(0,0,0,0.05); transform: translateY(-2px); }
+.app-icon:active { transform: scale(0.96) translateY(0); }
+
+.app-icon-img {
+  width: 72px; height: 72px;
+  border-radius: 20px;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.app-icon:hover .app-icon-img { box-shadow: var(--shadow-lg); }
+
+.app-icon span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* ══════════════════════════════════════
+   WINDOWS
+══════════════════════════════════════ */
+.win {
+  position: absolute;
+  background: var(--surface);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+  min-width: 340px;
+  min-height: 240px;
+  border: 1px solid var(--border2);
+  transition: box-shadow 0.2s;
+  animation: winOpen 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes winOpen {
+  from { opacity: 0; transform: scale(0.93) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.win.fullscreen {
+  top: 0 !important; left: 0 !important;
+  width: 100% !important; height: 100% !important;
+  border-radius: 0 !important;
+  z-index: 200 !important;
+}
+
+/* titlebar */
+.win-bar {
+  height: 42px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.win-bar:active { cursor: grabbing; }
+.win-bar.fullscreen-bar { cursor: default; }
+
+.win-dots { display: flex; gap: 6px; flex-shrink: 0; }
+.win-dot {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.1s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0; color: rgba(0,0,0,0.5);
+}
+.win-dot:hover { filter: brightness(0.82); font-size: 9px; }
+.win-dot.close { background: #ff5f57; }
+.win-dot.min   { background: #ffbd2e; }
+.win-dot.max   { background: #28ca41; }
+
+.win-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.win-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* resize handle */
+.win-resize {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 20px; height: 20px;
+  cursor: nwse-resize;
+  z-index: 10;
+}
+.win-resize::after {
+  content: '';
+  position: absolute;
+  bottom: 5px; right: 5px;
+  width: 10px; height: 10px;
+  border-right: 2px solid rgba(0,0,0,0.18);
+  border-bottom: 2px solid rgba(0,0,0,0.18);
+  border-radius: 1px;
+}
+
+iframe.app-frame {
+  width: 100%; height: 100%;
+  border: none;
+  flex: 1;
+}
+
+/* ══════════════════════════════════════
+   TASKBAR
+══════════════════════════════════════ */
+#taskbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 72px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  z-index: 1000;
+}
+
+#home-btn {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+#home-btn:hover { background: var(--bg); transform: scale(1.05); }
+
+#taskbar-apps {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#taskbar-apps::-webkit-scrollbar { display: none; }
+
+.tb-app {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  max-width: 160px;
+}
+.tb-app:hover { background: var(--bg); }
+.tb-app.active { background: var(--accent-soft); border-color: rgba(37,99,235,0.2); color: var(--accent); }
+.tb-app .tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.tb-app-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-close-x {
+  font-size: 11px; color: var(--text2); margin-left: 2px; flex-shrink: 0;
+  width: 16px; height: 16px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s;
+}
+.tb-close-x:hover { background: rgba(0,0,0,0.08); color: var(--red); }
+
+#taskbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#tb-clock {
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1;
+  text-align: right;
+}
+#tb-date { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* ══════════════════════════════════════
+   PEN TOOLBAR (right side floating)
+══════════════════════════════════════ */
+#pen-launcher {
+  position: fixed;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 900;
+  width: 48px; height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s, background 0.15s;
+  font-size: 22px;
+}
+#pen-launcher:hover { box-shadow: var(--shadow-lg); transform: translateY(-50%) scale(1.06); }
+#pen-launcher.open { background: var(--text); }
+#pen-launcher.open svg { stroke: white; }
+
+#pen-launcher svg {
+  width: 22px; height: 22px;
+  stroke: var(--text);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* The pen menu panel */
+#pen-panel {
+  position: fixed;
+  right: 74px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 899;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-xl);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 220px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(12px) scale(0.95);
+  transition: opacity 0.18s, transform 0.18s;
+  transform-origin: right center;
+}
+#pen-panel.open {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(-50%) translateX(0) scale(1);
+}
+
+.pen-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 10px 4px;
+}
+
+.pen-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.12s;
+}
+.pen-btn:hover { background: var(--surface2); }
+.pen-btn.active { background: var(--accent-soft); color: var(--accent); }
+.pen-btn svg {
+  width: 16px; height: 16px;
+  stroke: currentColor; stroke-width: 2; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+  flex-shrink: 0; opacity: 0.7;
+}
+.pen-btn.active svg { opacity: 1; }
+.pen-btn.danger:hover { background: #fef2f2; color: var(--red); }
+
+.pen-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ══════════════════════════════════════
+   DRAW CANVAS (overlay)
+══════════════════════════════════════ */
+#draw-canvas {
+  position: fixed;
+  inset: 0; bottom: 72px;
+  z-index: 500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#draw-canvas.active {
+  pointer-events: all;
+  opacity: 1;
+  cursor: crosshair;
+}
+
+/* freeze overlay */
+#freeze-canvas {
+  position: fixed;
+  inset: 0; bottom: 72px;
+  z-index: 400;
+  display: none;
+}
+
+#freeze-badge {
+  position: fixed;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--red);
+  color: white;
+  border-radius: 20px;
+  padding: 5px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  gap: 7px;
+}
+#freeze-badge.show { display: flex; }
+#freeze-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  background: white;
+  border-radius: 50%;
+  animation: fblink 1s ease-in-out infinite;
+}
+@keyframes fblink { 0%,100%{opacity:1;}50%{opacity:.2;} }
+
+/* ══════════════════════════════════════
+   TIMER OVERLAY
+══════════════════════════════════════ */
+#timer-overlay {
+  position: fixed;
+  top: 14px; right: 80px;
+  z-index: 8000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-lg);
+  padding: 16px 20px;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 200px;
+  cursor: move;
+}
+#timer-overlay.show { display: flex; }
+
+#timer-display {
+  font-family: 'DM Mono', monospace;
+  font-size: 40px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-align: center;
+  line-height: 1;
+}
+#timer-display.warn { color: var(--yellow); }
+#timer-display.danger { color: var(--red); }
+
+.timer-presets {
+  display: flex; gap: 5px; flex-wrap: wrap;
+}
+.t-pre {
+  flex: 1; min-width: 36px;
+  padding: 5px 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+}
+.t-pre:hover { background: var(--accent-soft); color: var(--accent); border-color: rgba(37,99,235,0.2); }
+.t-pre.sel { background: var(--text); color: white; border-color: transparent; }
+
+.timer-btns { display: flex; gap: 8px; }
+.t-btn {
+  flex: 1; height: 38px;
+  border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s;
+}
+.t-btn.primary { background: var(--accent); color: white; }
+.t-btn.primary:hover { background: #1d4ed8; }
+.t-btn.secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.t-btn.secondary:hover { background: var(--bg); }
+
+/* timer drag handle */
+.timer-handle {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.timer-handle-label { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; }
+.timer-handle-close {
+  width: 20px; height: 20px;
+  border: none; background: transparent;
+  border-radius: 5px;
+  cursor: pointer; color: var(--text2);
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s;
+}
+.timer-handle-close:hover { background: var(--surface2); color: var(--red); }
+
+/* ══════════════════════════════════════
+   SCREEN SHARE APP
+══════════════════════════════════════ */
+.screenshare-body {
+  flex: 1;
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+.screenshare-body video {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  position: absolute;
+  inset: 0;
+}
+.screenshare-body p { font-size: 13px; color: #888; line-height: 1.6; max-width: 280px; }
+.ss-btn {
+  padding: 11px 24px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: background 0.12s;
+}
+.ss-btn:hover { background: #1d4ed8; }
+.ss-btn svg { width: 16px; height: 16px; stroke: white; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.ss-tabs {
+  display: flex; gap: 0;
+  background: rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 3px;
+}
+.ss-tab {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #888;
+  background: transparent;
+  transition: all 0.15s;
+}
+.ss-tab.active { background: rgba(255,255,255,0.12); color: white; }
+.ss-input {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: white;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  max-width: 280px;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+.ss-input:focus { border-color: rgba(37,99,235,0.6); }
+.ss-input::placeholder { color: #555; }
+
+/* ══════════════════════════════════════
+   SPOTLIGHT
+══════════════════════════════════════ */
+#spotlight-canvas {
+  position: fixed;
+  inset: 0; bottom: 72px;
+  z-index: 600;
+  pointer-events: none;
+}
+#spotlight-canvas.active { pointer-events: all; }
+
+/* ══════════════════════════════════════
+   CONTEXT MENU
+══════════════════════════════════════ */
+#ctx {
+  position: fixed;
+  z-index: 9999;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow-xl);
+  display: none;
+  min-width: 170px;
+}
+#ctx.show { display: block; }
+.ctx-item {
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.1s;
+}
+.ctx-item:hover { background: var(--surface2); }
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+#toast {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--text);
+  color: white;
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- DRAW CANVAS -->
+<canvas id="draw-canvas"></canvas>
+
+<!-- FREEZE CANVAS -->
+<canvas id="freeze-canvas"></canvas>
+<div id="freeze-badge">FROZEN</div>
+
+<!-- SPOTLIGHT -->
+<canvas id="spotlight-canvas"></canvas>
+
+<!-- TIMER -->
+<div id="timer-overlay">
+  <div class="timer-handle" id="timer-drag">
+    <span class="timer-handle-label">Timer</span>
+    <button class="timer-handle-close" onclick="closeTimer()">✕</button>
+  </div>
+  <div id="timer-display">00:00</div>
+  <div class="timer-presets">
+    <button class="t-pre" onclick="setT(5*60,this)">5m</button>
+    <button class="t-pre" onclick="setT(10*60,this)">10m</button>
+    <button class="t-pre sel" onclick="setT(25*60,this)">25m</button>
+    <button class="t-pre" onclick="setT(30*60,this)">30m</button>
+    <button class="t-pre" onclick="setT(60*60,this)">60m</button>
+  </div>
+  <div class="timer-btns">
+    <button class="t-btn primary" id="t-ss" onclick="timerToggle()">Start</button>
+    <button class="t-btn secondary" onclick="timerReset()">Reset</button>
+  </div>
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop">
+
+  <!-- HOME SCREEN -->
+  <div id="home">
+    <div class="home-time">
+      <div class="home-clock" id="home-clock">00:00</div>
+      <div class="home-date" id="home-date">Loading…</div>
+    </div>
+    <div class="app-grid">
+      <button class="app-icon" onclick="openApp('whiteboard')">
+        <div class="app-icon-img">✏️</div>
+        <span>Whiteboard</span>
+      </button>
+      <button class="app-icon" onclick="openApp('browser')">
+        <div class="app-icon-img">🌐</div>
+        <span>Browser</span>
+      </button>
+      <button class="app-icon" onclick="openApp('screenshare')">
+        <div class="app-icon-img">🖥</div>
+        <span>Screen Share</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- APP WINDOWS CONTAINER -->
+  <div id="win-layer" style="position:absolute;inset:0;pointer-events:none;"></div>
+
+</div>
+
+<!-- PEN LAUNCHER (right side) -->
+<button id="pen-launcher" onclick="togglePenPanel()" title="Tools">
+  <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+</button>
+
+<!-- PEN PANEL -->
+<div id="pen-panel">
+  <div class="pen-section-label">Annotation</div>
+  <button class="pen-btn" id="pb-draw" onclick="penAction('draw')">
+    <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    Draw on screen
+  </button>
+  <button class="pen-btn" id="pb-highlight" onclick="penAction('highlight')">
+    <svg viewBox="0 0 24 24"><path d="M9 11l-6 6v3h3l6-6"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+    Highlighter
+  </button>
+  <button class="pen-btn" id="pb-spotlight" onclick="penAction('spotlight')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    Spotlight
+  </button>
+  <div class="pen-sep"></div>
+
+  <!-- Draw colours (shown when drawing active) -->
+  <div id="draw-colours" style="display:none;padding:4px 10px 8px;">
+    <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Colour</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">
+      <div class="col-swatch active" style="background:#1c1b19;" onclick="setDrawCol('#1c1b19',this)" title="Black"></div>
+      <div class="col-swatch" style="background:#dc2626;" onclick="setDrawCol('#dc2626',this)" title="Red"></div>
+      <div class="col-swatch" style="background:#16a34a;" onclick="setDrawCol('#16a34a',this)" title="Green"></div>
+      <div class="col-swatch" style="background:#2563eb;" onclick="setDrawCol('#2563eb',this)" title="Blue"></div>
+      <div class="col-swatch" style="background:#ca8a04;" onclick="setDrawCol('#ca8a04',this)" title="Yellow"></div>
+      <div class="col-swatch" style="background:#ffffff;border:1.5px solid #ddd;" onclick="setDrawCol('#ffffff',this)" title="White"></div>
+    </div>
+    <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px;">Size</div>
+    <input type="range" id="brush-sz" min="2" max="28" value="4" style="width:100%;accent-color:var(--accent);" oninput="drawState.size=+this.value">
+    <button class="pen-btn danger" style="margin-top:8px;" onclick="clearDraw()">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      Clear drawings
+    </button>
+  </div>
+
+  <style>
+    .col-swatch {
+      width: 24px; height: 24px; border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .col-swatch:hover { transform: scale(1.15); }
+    .col-swatch.active { box-shadow: 0 0 0 2.5px white, 0 0 0 4px var(--text); }
+  </style>
+
+  <div class="pen-section-label">Screen</div>
+  <button class="pen-btn" id="pb-freeze" onclick="penAction('freeze')">
+    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    Freeze display
+  </button>
+
+  <div class="pen-sep"></div>
+  <div class="pen-section-label">Widgets</div>
+  <button class="pen-btn" id="pb-timer" onclick="penAction('timer')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
+    Timer
+  </button>
+  <button class="pen-btn" id="pb-countdown" onclick="penAction('countdown')">
+    <svg viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    Countdown (5s)
+  </button>
+  <button class="pen-btn" id="pb-undo" onclick="undoDraw()">
+    <svg viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+    Undo stroke
+  </button>
+</div>
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <button id="home-btn" onclick="goHome()" title="Home">⊞</button>
+  <div id="taskbar-apps"></div>
+  <div id="taskbar-right">
+    <div>
+      <div id="tb-clock">00:00</div>
+      <div id="tb-date">Mon 1 Jan</div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx">
+  <div class="ctx-item" onclick="ctxAddNote()">📌 Add sticky note</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxScreenshot()">📸 Save board as PNG</div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════
+function tick() {
+  const n = new Date();
+  const t = n.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+  const d = n.toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'});
+  document.getElementById('home-clock').textContent = t;
+  document.getElementById('home-date').textContent  = n.toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('tb-clock').textContent   = t;
+  document.getElementById('tb-date').textContent    = d;
+}
+tick(); setInterval(tick, 10000);
+
+// ═══════════════════════════════════════════════════════
+// WINDOW MANAGER
+// ═══════════════════════════════════════════════════════
+let winZ = 10;
+const windows = {}; // id → {el, fullscreen, name}
+
+function openApp(id) {
+  if (windows[id]) { focusWin(id); return; }
+  hideHome();
+
+  const configs = {
+    whiteboard:  { name: 'Whiteboard',   w: 900, h: 580, build: buildWhiteboard },
+    browser:     { name: 'Browser',      w: 860, h: 560, build: buildBrowser },
+    screenshare: { name: 'Screen Share', w: 720, h: 500, build: buildScreenShare },
+  };
+  const cfg = configs[id];
+  if (!cfg) return;
+
+  const layer = document.getElementById('win-layer');
+  const el = document.createElement('div');
+  el.className = 'win';
+  el.id = 'win-' + id;
+  el.style.pointerEvents = 'all';
+
+  // Default position — cascade
+  const off = Object.keys(windows).length * 28;
+  const maxL = Math.max(0, window.innerWidth - cfg.w - 80);
+  const maxT = Math.max(0, document.getElementById('desktop').offsetHeight - cfg.h - 40);
+  el.style.left   = Math.min(60 + off, maxL) + 'px';
+  el.style.top    = Math.min(40 + off, maxT) + 'px';
+  el.style.width  = cfg.w + 'px';
+  el.style.height = cfg.h + 'px';
+
+  // Titlebar
+  const bar = document.createElement('div');
+  bar.className = 'win-bar';
+  bar.innerHTML = `
+    <div class="win-dots">
+      <button class="win-dot close" onclick="closeWin('${id}')">✕</button>
+      <button class="win-dot min"   onclick="minimiseWin('${id}')">−</button>
+      <button class="win-dot max"   onclick="toggleFullscreen('${id}')">+</button>
+    </div>
+    <div class="win-title">${cfg.name}</div>
+    <div style="width:42px"></div>
+  `;
+  el.appendChild(bar);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'win-body';
+  el.appendChild(body);
+
+  // Resize handle
+  const rh = document.createElement('div');
+  rh.className = 'win-resize';
+  el.appendChild(rh);
+  makeResizable(el, rh);
+
+  cfg.build(body, id);
+  layer.appendChild(el);
+
+  windows[id] = { el, fullscreen: false, name: cfg.name };
+  makeDraggable(el, bar);
+  focusWin(id);
+  addTaskbarBtn(id, cfg.name);
+}
+
+function focusWin(id) {
+  winZ++;
+  const w = windows[id];
+  if (!w) return;
+  w.el.style.zIndex = winZ;
+  // update taskbar active state
+  document.querySelectorAll('.tb-app').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tb-app[data-id="${id}"]`)?.classList.add('active');
+}
+
+function closeWin(id) {
+  const w = windows[id];
+  if (!w) return;
+  w.el.style.animation = 'none';
+  w.el.style.opacity = '0';
+  w.el.style.transform = 'scale(0.95)';
+  w.el.style.transition = 'opacity 0.15s, transform 0.15s';
+  setTimeout(() => {
+    w.el.remove();
+    delete windows[id];
+    removeTaskbarBtn(id);
+    if (Object.keys(windows).length === 0) showHome();
+  }, 150);
+}
+
+function minimiseWin(id) {
+  windows[id]?.el.classList.add('minimised');
+  document.querySelector(`.tb-app[data-id="${id}"]`)?.classList.remove('active');
+}
+
+function toggleFullscreen(id) {
+  const w = windows[id];
+  if (!w) return;
+  if (w.fullscreen) {
+    w.el.classList.remove('fullscreen');
+    Object.assign(w.el.style, w.savedStyle);
+    w.el.querySelector('.win-bar').classList.remove('fullscreen-bar');
+    w.fullscreen = false;
+  } else {
+    w.savedStyle = { left: w.el.style.left, top: w.el.style.top, width: w.el.style.width, height: w.el.style.height };
+    w.el.classList.add('fullscreen');
+    w.el.querySelector('.win-bar').classList.add('fullscreen-bar');
+    w.fullscreen = true;
+  }
+  focusWin(id);
+}
+
+// home
+function hideHome() { document.getElementById('home').classList.add('hidden'); }
+function showHome()  { document.getElementById('home').classList.remove('hidden'); }
+function goHome() {
+  showHome();
+  document.querySelectorAll('.win').forEach(el => {
+    el.style.opacity = '0.3';
+    el.style.pointerEvents = 'none';
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.win').forEach(el => {
+      el.style.opacity = '';
+      el.style.pointerEvents = '';
+    });
+  }, 100);
+}
+
+// ── Taskbar ─────────────────────────────────────────────
+function addTaskbarBtn(id, name) {
+  const bar = document.getElementById('taskbar-apps');
+  const btn = document.createElement('div');
+  btn.className = 'tb-app active';
+  btn.dataset.id = id;
+  btn.innerHTML = `<div class="tb-dot"></div><span class="tb-app-name">${name}</span><div class="tb-close-x" onclick="event.stopPropagation();closeWin('${id}')">✕</div>`;
+  btn.addEventListener('click', () => {
+    const w = windows[id];
+    if (!w) return;
+    if (w.el.classList.contains('minimised')) {
+      w.el.classList.remove('minimised');
+    }
+    focusWin(id);
+    hideHome();
+  });
+  bar.appendChild(btn);
+}
+
+function removeTaskbarBtn(id) {
+  document.querySelector(`.tb-app[data-id="${id}"]`)?.remove();
+}
+
+// ── Dragging ─────────────────────────────────────────────
+function makeDraggable(win, handle) {
+  let ox = 0, oy = 0, drag = false;
+  handle.addEventListener('mousedown', e => {
+    if (e.target.closest('.win-dots')) return;
+    const w = windows[win.id.replace('win-','')];
+    if (w?.fullscreen) return;
+    drag = true;
+    const r = win.getBoundingClientRect();
+    ox = e.clientX - r.left;
+    oy = e.clientY - r.top;
+    focusWin(win.id.replace('win-',''));
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const nx = e.clientX - ox;
+    const ny = Math.max(0, e.clientY - oy);
+    win.style.left = nx + 'px';
+    win.style.top  = ny + 'px';
+  });
+  document.addEventListener('mouseup', () => drag = false);
+}
+
+function makeResizable(win, handle) {
+  let drag = false, sx, sy, sw, sh;
+  handle.addEventListener('mousedown', e => {
+    drag = true; sx = e.clientX; sy = e.clientY;
+    sw = win.offsetWidth; sh = win.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    win.style.width  = Math.max(340, sw + e.clientX - sx) + 'px';
+    win.style.height = Math.max(240, sh + e.clientY - sy) + 'px';
+  });
+  document.addEventListener('mouseup', () => drag = false);
+}
+
+// ═══════════════════════════════════════════════════════
+// APP BUILDERS
+// ═══════════════════════════════════════════════════════
+
+// ── Whiteboard (Excalidraw) ─────────────────────────────
+function buildWhiteboard(body) {
+  const iframe = document.createElement('iframe');
+  iframe.className = 'app-frame';
+  iframe.src = 'https://excalidraw.com';
+  iframe.allow = 'clipboard-read; clipboard-write';
+  body.appendChild(iframe);
+}
+
+// ── Browser ──────────────────────────────────────────────
+function buildBrowser(body) {
+  const bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;';
+  bar.innerHTML = `
+    <button onclick="browserNav(-1)" style="border:none;background:transparent;cursor:pointer;font-size:16px;color:var(--text2);padding:3px 6px;border-radius:6px;" title="Back">‹</button>
+    <button onclick="browserNav(1)"  style="border:none;background:transparent;cursor:pointer;font-size:16px;color:var(--text2);padding:3px 6px;border-radius:6px;" title="Forward">›</button>
+    <button onclick="browserReload()" style="border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text2);padding:3px 6px;border-radius:6px;" title="Reload">↻</button>
+    <input id="browser-url" type="text" value="https://google.com"
+      style="flex:1;height:30px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px;font-family:DM Mono,monospace;font-size:12px;outline:none;background:white;transition:border-color .15s;"
+      onfocus="this.style.borderColor='#2563eb'"
+      onblur="this.style.borderColor=''"
+      onkeydown="if(event.key==='Enter')browserGo()">
+    <button onclick="browserGo()" style="height:30px;padding:0 14px;background:var(--accent);color:white;border:none;border-radius:8px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Go</button>
+  `;
+  body.appendChild(bar);
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'browser-frame';
+  iframe.className = 'app-frame';
+  iframe.src = 'https://google.com';
+  body.appendChild(iframe);
+}
+
+function browserGo() {
+  let url = document.getElementById('browser-url')?.value.trim() || '';
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) {
+    url = url.includes('.') ? 'https://' + url : 'https://www.google.com/search?q=' + encodeURIComponent(url);
+  }
+  document.getElementById('browser-url').value = url;
+  document.getElementById('browser-frame').src = url;
+}
+function browserNav(d) {
+  try { d < 0 ? document.getElementById('browser-frame').contentWindow.history.back() : document.getElementById('browser-frame').contentWindow.history.forward(); } catch {}
+}
+function browserReload() { const f = document.getElementById('browser-frame'); if(f) f.src = f.src; }
+
+// ── Screen Share ──────────────────────────────────────────
+function buildScreenShare(body, winId) {
+  body.style.background = '#111';
+  body.innerHTML = `
+    <div class="screenshare-body" id="ss-body">
+      <div class="ss-tabs">
+        <button class="ss-tab active" onclick="ssTab('direct',this)">Direct capture</button>
+        <button class="ss-tab" onclick="ssTab('ip',this)">Stream URL / IP</button>
+        <button class="ss-tab" onclick="ssTab('obs',this)">OBS</button>
+      </div>
+
+      <div id="ss-direct" style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+        <p>Capture your screen, a window, or a browser tab directly.</p>
+        <button class="ss-btn" onclick="ssStartCapture()">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Start screen capture
+        </button>
+      </div>
+
+      <div id="ss-ip" style="display:none;flex-direction:column;align-items:center;gap:12px;">
+        <p>Enter a local stream URL — your phone, another PC, OBS stream, or RTSP feed via a converter.</p>
+        <input class="ss-input" id="ss-url-input" placeholder="http://192.168.1.x:port/stream" value="http://192.168.">
+        <button class="ss-btn" onclick="ssLoadUrl()">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/></svg>
+          Connect
+        </button>
+        <p style="font-size:11px;color:#555;">Works with MJPEG streams, HLS (.m3u8), and most IP cameras. RTSP needs a proxy.</p>
+      </div>
+
+      <div id="ss-obs" style="display:none;flex-direction:column;align-items:center;gap:12px;">
+        <p>In OBS: go to <b style="color:#aaa">Tools → obs-websocket Settings</b>, enable it, then start a Virtual Camera. Then connect below.</p>
+        <input class="ss-input" id="ss-obs-port" placeholder="OBS WebSocket port (default 4455)" value="4455">
+        <input class="ss-input" id="ss-obs-pass" placeholder="Password (if set)" type="password" style="margin-top:-4px;">
+        <button class="ss-btn" onclick="ssObsVirtualCam()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          Use OBS Virtual Camera
+        </button>
+        <p style="font-size:11px;color:#555;">Virtual Camera shows OBS output as a webcam — no extra software needed.</p>
+      </div>
+    </div>
+    <video id="ss-video" style="display:none;width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#000;" autoplay playsinline muted></video>
+    <div id="ss-stop" style="display:none;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);">
+      <button class="ss-btn" style="background:var(--red);" onclick="ssStop()">■ Stop</button>
+    </div>
+  `;
+}
+
+let ssMode = 'direct';
+function ssTab(mode, el) {
+  ssMode = mode;
+  document.querySelectorAll('.ss-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  ['direct','ip','obs'].forEach(m => {
+    const d = document.getElementById('ss-'+m);
+    if (d) d.style.display = m === mode ? 'flex' : 'none';
+  });
+}
+
+async function ssStartCapture() {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+    showSsVideo(stream);
+    stream.getVideoTracks()[0].addEventListener('ended', ssStop);
+    toast('Screen capture started');
+  } catch(e) { if (e.name !== 'NotAllowedError') toast('Could not capture: ' + e.message); }
+}
+
+function ssLoadUrl() {
+  const url = document.getElementById('ss-url-input')?.value.trim();
+  if (!url) return;
+  const vid = document.getElementById('ss-video');
+  if (!vid) return;
+  vid.src = url;
+  showSsVideo(null, url);
+  toast('Connecting to stream…');
+}
+
+async function ssObsVirtualCam() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cam = devices.find(d => d.kind === 'videoinput' && d.label.toLowerCase().includes('obs'));
+    if (!cam) {
+      const all = devices.filter(d => d.kind === 'videoinput').map(d => d.label || d.deviceId);
+      toast('OBS Virtual Camera not found. Available: ' + (all.join(', ') || 'none'));
+      return;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: cam.deviceId } });
+    showSsVideo(stream);
+    toast('OBS Virtual Camera connected');
+  } catch(e) { toast('Camera error: ' + e.message); }
+}
+
+function showSsVideo(stream, src) {
+  const body = document.getElementById('ss-body');
+  const vid  = document.getElementById('ss-video');
+  const stop = document.getElementById('ss-stop');
+  if (!vid) return;
+  if (stream) vid.srcObject = stream;
+  else if (src) vid.src = src;
+  vid.style.display = 'block';
+  body.style.display = 'none';
+  stop.style.display = 'block';
+}
+
+function ssStop() {
+  const vid = document.getElementById('ss-video');
+  if (vid?.srcObject) { vid.srcObject.getTracks().forEach(t => t.stop()); vid.srcObject = null; }
+  if (vid) { vid.src = ''; vid.style.display = 'none'; }
+  const body = document.getElementById('ss-body');
+  const stop = document.getElementById('ss-stop');
+  if (body) body.style.display = 'flex';
+  if (stop) stop.style.display = 'none';
+  toast('Stream stopped');
+}
+
+// ═══════════════════════════════════════════════════════
+// PEN PANEL
+// ═══════════════════════════════════════════════════════
+let penOpen = false;
+
+function togglePenPanel() {
+  penOpen = !penOpen;
+  document.getElementById('pen-panel').classList.toggle('open', penOpen);
+  document.getElementById('pen-launcher').classList.toggle('open', penOpen);
+}
+
+// close panel when clicking outside
+document.addEventListener('click', e => {
+  if (penOpen && !e.target.closest('#pen-panel') && !e.target.closest('#pen-launcher')) {
+    penOpen = false;
+    document.getElementById('pen-panel').classList.remove('open');
+    document.getElementById('pen-launcher').classList.remove('open');
+  }
+});
+
+function penAction(action) {
+  switch(action) {
+    case 'draw':       toggleDraw();       break;
+    case 'highlight':  toggleHighlight();  break;
+    case 'spotlight':  toggleSpotlight();  break;
+    case 'freeze':     toggleFreeze();     break;
+    case 'timer':      toggleTimer();      break;
+    case 'countdown':  startCountdown();   break;
+    case 'undo':       undoDraw();         break;
+  }
+}
+
+function setPenBtnActive(id, active) {
+  document.getElementById(id)?.classList.toggle('active', active);
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAW ENGINE
+// ═══════════════════════════════════════════════════════
+const DC = document.getElementById('draw-canvas');
+const DX = DC.getContext('2d');
+const drawState = {
+  active: false, highlight: false,
+  color: '#1c1b19', hlColor: 'rgba(255,232,0,0.42)',
+  size: 4,
+  drawing: false,
+  startX: 0, startY: 0, snapshot: null,
+  history: [], future: []
+};
+
+function resizeDC() {
+  const w = window.innerWidth, h = window.innerHeight - 72;
+  const img = DX.getImageData(0, 0, DC.width, DC.height);
+  DC.width = w; DC.height = h;
+  try { DX.putImageData(img, 0, 0); } catch {}
+  const sc = document.getElementById('spotlight-canvas');
+  sc.width = w; sc.height = h;
+}
+window.addEventListener('resize', resizeDC);
+resizeDC();
+
+function toggleDraw() {
+  if (drawState.highlight) toggleHighlight();
+  drawState.active = !drawState.active;
+  DC.classList.toggle('active', drawState.active);
+  setPenBtnActive('pb-draw', drawState.active);
+  document.getElementById('draw-colours').style.display = drawState.active ? 'block' : 'none';
+  if (drawState.active) toast('Drawing mode on — Esc to exit');
+}
+
+function toggleHighlight() {
+  if (drawState.active && !drawState.highlight) return;
+  drawState.highlight = !drawState.highlight;
+  drawState.active = drawState.highlight;
+  DC.classList.toggle('active', drawState.active);
+  setPenBtnActive('pb-highlight', drawState.highlight);
+  if (drawState.highlight) toast('Highlighter on');
+}
+
+function setDrawCol(c, el) {
+  drawState.color = c;
+  document.querySelectorAll('.col-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+DC.addEventListener('mousedown', e => {
+  if (!drawState.active) return;
+  saveDH();
+  drawState.drawing = true;
+  const r = DC.getBoundingClientRect();
+  drawState.startX = e.clientX - r.left;
+  drawState.startY = e.clientY - r.top;
+  drawState.snapshot = DX.getImageData(0, 0, DC.width, DC.height);
+  DX.beginPath();
+  DX.moveTo(drawState.startX, drawState.startY);
+  e.preventDefault();
+});
+
+DC.addEventListener('mousemove', e => {
+  if (!drawState.drawing) return;
+  const r = DC.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  DX.lineCap = 'round'; DX.lineJoin = 'round';
+  if (drawState.highlight) {
+    DX.globalCompositeOperation = 'multiply';
+    DX.strokeStyle = drawState.hlColor;
+    DX.lineWidth = drawState.size * 6;
+    DX.lineCap = 'square';
+  } else {
+    DX.globalCompositeOperation = 'source-over';
+    DX.strokeStyle = drawState.color;
+    DX.lineWidth = drawState.size;
+  }
+  DX.lineTo(x, y); DX.stroke();
+  DX.beginPath(); DX.moveTo(x, y);
+  DX.globalCompositeOperation = 'source-over';
+});
+
+DC.addEventListener('mouseup', () => { drawState.drawing = false; drawState.future = []; });
+
+function saveDH() {
+  drawState.history.push(DX.getImageData(0, 0, DC.width, DC.height));
+  if (drawState.history.length > 40) drawState.history.shift();
+}
+function undoDraw() {
+  if (!drawState.history.length) return;
+  drawState.future.push(DX.getImageData(0, 0, DC.width, DC.height));
+  DX.putImageData(drawState.history.pop(), 0, 0);
+}
+function clearDraw() {
+  saveDH();
+  DX.clearRect(0, 0, DC.width, DC.height);
+  toast('Drawings cleared');
+}
+
+// ── Keyboard shortcuts ───────────────────────────────────
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  if (['INPUT','TEXTAREA'].includes(tag) || document.activeElement.contentEditable === 'true') return;
+  if (e.key === 'Escape') {
+    if (drawState.active) toggleDraw();
+    if (spotActive) toggleSpotlight();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undoDraw(); }
+});
+
+// ═══════════════════════════════════════════════════════
+// FREEZE
+// ═══════════════════════════════════════════════════════
+let frozen = false;
+function toggleFreeze() {
+  frozen = !frozen;
+  const fc = document.getElementById('freeze-canvas');
+  const badge = document.getElementById('freeze-badge');
+  if (frozen) {
+    // screenshot the desktop area
+    fc.width = window.innerWidth;
+    fc.height = window.innerHeight - 72;
+    // draw a grey overlay tint to signal freeze visually
+    const cx = fc.getContext('2d');
+    cx.fillStyle = 'rgba(200,198,194,0.15)';
+    cx.fillRect(0, 0, fc.width, fc.height);
+    fc.style.display = 'block';
+    badge.classList.add('show');
+    setPenBtnActive('pb-freeze', true);
+    toast('Frozen — click Freeze again to unfreeze');
+  } else {
+    fc.style.display = 'none';
+    badge.classList.remove('show');
+    setPenBtnActive('pb-freeze', false);
+    toast('Unfrozen');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SPOTLIGHT
+// ═══════════════════════════════════════════════════════
+const SC = document.getElementById('spotlight-canvas');
+const SX = SC.getContext('2d');
+let spotActive = false, spotR = 160, spotPos = { x: 0, y: 0 };
+
+function toggleSpotlight() {
+  spotActive = !spotActive;
+  SC.classList.toggle('active', spotActive);
+  setPenBtnActive('pb-spotlight', spotActive);
+  if (spotActive) {
+    drawSpot(window.innerWidth / 2, (window.innerHeight - 72) / 2);
+    toast('Spotlight on — scroll to resize, Esc to exit');
+  } else {
+    SX.clearRect(0, 0, SC.width, SC.height);
+    toast('Spotlight off');
+  }
+}
+
+function drawSpot(x, y) {
+  SX.clearRect(0, 0, SC.width, SC.height);
+  SX.fillStyle = 'rgba(0,0,0,0.65)';
+  SX.fillRect(0, 0, SC.width, SC.height);
+  SX.globalCompositeOperation = 'destination-out';
+  const g = SX.createRadialGradient(x, y, spotR * 0.35, x, y, spotR);
+  g.addColorStop(0, 'rgba(0,0,0,1)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  SX.beginPath(); SX.arc(x, y, spotR, 0, Math.PI * 2);
+  SX.fillStyle = g; SX.fill();
+  SX.globalCompositeOperation = 'source-over';
+}
+
+SC.addEventListener('mousemove', e => {
+  if (!spotActive) return;
+  spotPos = { x: e.clientX, y: e.clientY };
+  drawSpot(e.clientX, e.clientY);
+});
+SC.addEventListener('wheel', e => {
+  if (!spotActive) return;
+  e.preventDefault();
+  spotR = Math.max(40, Math.min(500, spotR - e.deltaY * 0.4));
+  drawSpot(spotPos.x, spotPos.y);
+}, { passive: false });
+
+// ═══════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════
+let tSec = 25 * 60, tSet = 25 * 60, tRunning = false, tInt = null;
+
+function toggleTimer() {
+  const el = document.getElementById('timer-overlay');
+  const showing = el.classList.contains('show');
+  el.classList.toggle('show', !showing);
+  setPenBtnActive('pb-timer', !showing);
+  if (!showing) makeTimerDraggable();
+}
+function closeTimer() {
+  document.getElementById('timer-overlay').classList.remove('show');
+  setPenBtnActive('pb-timer', false);
+}
+
+function tUI() {
+  const s = Math.abs(tSec);
+  const m = Math.floor(s / 60), se = s % 60;
+  const pfx = tSec < 0 ? '-' : '';
+  document.getElementById('timer-display').textContent = pfx + String(m).padStart(2,'0') + ':' + String(se).padStart(2,'0');
+  const d = document.getElementById('timer-display');
+  const ratio = tSet > 0 ? tSec / tSet : 1;
+  d.className = tSec <= 0 ? 'danger' : ratio < 0.25 ? 'warn' : '';
+}
+
+function setT(s, el) {
+  timerReset(); tSec = s; tSet = s;
+  document.querySelectorAll('.t-pre').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  tUI();
+}
+
+function timerToggle() {
+  if (tRunning) {
+    clearInterval(tInt); tRunning = false;
+    document.getElementById('t-ss').textContent = 'Resume';
+  } else {
+    tRunning = true;
+    document.getElementById('t-ss').textContent = 'Pause';
+    tInt = setInterval(() => { tSec--; tUI(); }, 1000);
+  }
+}
+
+function timerReset() {
+  clearInterval(tInt); tRunning = false;
+  tSec = tSet;
+  document.getElementById('t-ss').textContent = 'Start';
+  tUI();
+}
+tUI();
+
+function makeTimerDraggable() {
+  const el = document.getElementById('timer-overlay');
+  const handle = document.getElementById('timer-drag');
+  let ox = 0, oy = 0, drag = false;
+  handle.onmousedown = e => {
+    drag = true;
+    const r = el.getBoundingClientRect();
+    ox = e.clientX - r.left; oy = e.clientY - r.top;
+    e.preventDefault();
+  };
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    el.style.right = 'auto';
+    el.style.left = Math.max(0, Math.min(e.clientX - ox, window.innerWidth - el.offsetWidth)) + 'px';
+    el.style.top  = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - 150)) + 'px';
+  });
+  document.addEventListener('mouseup', () => drag = false);
+}
+
+// ═══════════════════════════════════════════════════════
+// COUNTDOWN (5-4-3-2-1 fullscreen flash)
+// ═══════════════════════════════════════════════════════
+function startCountdown() {
+  let n = 5;
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;inset:0;z-index:99999;background:var(--text);color:white;
+    display:flex;align-items:center;justify-content:center;
+    font-family:DM Mono,monospace;font-size:200px;font-weight:400;
+    animation:cdfade .5s ease-in-out;`;
+  document.head.insertAdjacentHTML('beforeend','<style>@keyframes cdfade{from{opacity:0;transform:scale(1.2);}to{opacity:1;transform:scale(1);}}</style>');
+  el.textContent = n;
+  document.body.appendChild(el);
+  const iv = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(iv); el.remove(); return; }
+    el.textContent = n;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = 'cdfade .5s ease-in-out';
+  }, 1000);
+  toast('Countdown started');
+}
+
+// ═══════════════════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════════════════
+let ctxPos = { x: 0, y: 0 };
+document.getElementById('desktop').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  ctxPos = { x: e.clientX, y: e.clientY };
+  const ctx = document.getElementById('ctx');
+  ctx.style.left = Math.min(e.clientX, window.innerWidth - 180) + 'px';
+  ctx.style.top  = Math.min(e.clientY, window.innerHeight - 100) + 'px';
+  ctx.classList.add('show');
+});
+document.addEventListener('click', () => document.getElementById('ctx').classList.remove('show'));
+
+function ctxAddNote() {
+  const note = document.createElement('div');
+  note.style.cssText = `position:absolute;left:${ctxPos.x}px;top:${ctxPos.y - 72}px;
+    width:170px;background:#ffe566;border-radius:4px;box-shadow:var(--shadow-md);z-index:300;`;
+  const cols = ['#ffe566','#b5ead7','#c7ceea','#ffd5d5'];
+  note.style.background = cols[Math.floor(Math.random() * cols.length)];
+  note.innerHTML = `
+    <div style="background:rgba(0,0,0,.07);padding:5px 8px;cursor:grab;display:flex;justify-content:space-between;align-items:center;border-radius:4px 4px 0 0;font-size:10px;font-weight:700;color:rgba(0,0,0,.4);text-transform:uppercase;letter-spacing:.06em;">
+      Note
+      <button onclick="this.closest('div').parentElement.remove()" style="border:none;background:transparent;cursor:pointer;font-size:13px;color:rgba(0,0,0,.4);">✕</button>
+    </div>
+    <div contenteditable="true" style="padding:10px;font-family:DM Sans,sans-serif;font-size:13px;min-height:70px;outline:none;color:#333;">Write here…</div>
+  `;
+  const head = note.firstElementChild;
+  let ox = 0, oy = 0, drag = false;
+  head.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'BUTTON') return;
+    drag = true; const r = note.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top; e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => { if (!drag) return; note.style.left = (e.clientX - ox) + 'px'; note.style.top = (e.clientY - oy) + 'px'; });
+  document.addEventListener('mouseup', () => drag = false);
+  document.getElementById('win-layer').appendChild(note);
+}
+
+function ctxScreenshot() {
+  const a = document.createElement('a');
+  a.download = 'boardos-drawing.png';
+  a.href = DC.toDataURL();
+  a.click();
+  toast('Drawing saved as PNG');
+}
+
+// ═══════════════════════════════════════════════════════
+// PEN LAUNCHER — also draggable
+// ═══════════════════════════════════════════════════════
+(function() {
+  const launcher = document.getElementById('pen-launcher');
+  let ox = 0, oy = 0, drag = false, moved = false;
+  launcher.addEventListener('mousedown', e => {
+    drag = true; moved = false;
+    const r = launcher.getBoundingClientRect();
+    ox = e.clientX - r.left; oy = e.clientY - r.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!drag) return; moved = true;
+    const x = e.clientX - ox, y = e.clientY - oy;
+    launcher.style.right = 'auto';
+    launcher.style.transform = 'none';
+    launcher.style.left = Math.max(0, Math.min(x, window.innerWidth - 56)) + 'px';
+    launcher.style.top  = Math.max(0, Math.min(y, window.innerHeight - 130)) + 'px';
+    // reposition panel too
+    const panel = document.getElementById('pen-panel');
+    panel.style.right = 'auto';
+    panel.style.transform = penOpen ? 'scale(1)' : 'scale(0.95)';
+    panel.style.left = Math.max(0, parseFloat(launcher.style.left) - 228) + 'px';
+    panel.style.top  = launcher.style.top;
+  });
+  document.addEventListener('mouseup', e => {
+    if (drag && !moved) togglePenPanel();
+    drag = false;
+  });
+  launcher.removeEventListener('click', togglePenPanel);
+})();
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
