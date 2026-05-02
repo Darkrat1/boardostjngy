@@ -1187,17 +1187,67 @@ function ssLoadUrl() {
 
 async function ssObsVirtualCam() {
   try {
+    // Step 1 — request camera permission so device labels become visible
+    const permStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    permStream.getTracks().forEach(t => t.stop()); // immediately release, we just needed the permission
+
+    // Step 2 — enumerate all video input devices
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const cam = devices.find(d => d.kind === 'videoinput' && d.label.toLowerCase().includes('obs'));
-    if (!cam) {
-      const all = devices.filter(d => d.kind === 'videoinput').map(d => d.label || d.deviceId);
-      toast('OBS Virtual Camera not found. Available: ' + (all.join(', ') || 'none'));
+    const cams = devices.filter(d => d.kind === 'videoinput');
+
+    if (cams.length === 0) {
+      toast('No camera/capture devices found');
       return;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: cam.deviceId } });
-    showSsVideo(stream);
-    toast('OBS Virtual Camera connected');
-  } catch(e) { toast('Camera error: ' + e.message); }
+
+    // Step 3 — if only one device, use it. If multiple, show a picker
+    if (cams.length === 1) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: cams[0].deviceId } } });
+      showSsVideo(stream);
+      toast('Connected: ' + (cams[0].label || 'Camera'));
+      return;
+    }
+
+    // Show picker inside the SS panel
+    const body = document.getElementById('ss-obs');
+    if (!body) return;
+
+    // Remove any existing picker
+    document.getElementById('ss-cam-picker')?.remove();
+
+    const picker = document.createElement('div');
+    picker.id = 'ss-cam-picker';
+    picker.style.cssText = 'display:flex;flex-direction:column;gap:6px;width:100%;max-width:300px;';
+
+    const label = document.createElement('p');
+    label.style.cssText = 'color:#aaa;font-size:12px;margin:0;';
+    label.textContent = 'Choose a video device:';
+    picker.appendChild(label);
+
+    cams.forEach(cam => {
+      const btn = document.createElement('button');
+      btn.className = 'ss-btn';
+      btn.style.justifyContent = 'flex-start';
+      const isObs = cam.label.toLowerCase().includes('obs') || cam.label.toLowerCase().includes('virtual');
+      btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:white;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        ${cam.label || 'Camera ' + (cams.indexOf(cam) + 1)}${isObs ? ' ⭐' : ''}`;
+      btn.onclick = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: cam.deviceId } } });
+          showSsVideo(stream);
+          toast('Connected: ' + (cam.label || 'Camera'));
+        } catch(e) { toast('Could not open: ' + e.message); }
+      };
+      picker.appendChild(btn);
+    });
+
+    body.appendChild(picker);
+    toast('Pick a device below ↓');
+
+  } catch(e) {
+    if (e.name === 'NotAllowedError') toast('Camera permission denied — allow it in browser settings');
+    else toast('Error: ' + e.message);
+  }
 }
 
 function showSsVideo(stream, src) {
